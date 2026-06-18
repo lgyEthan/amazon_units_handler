@@ -71,32 +71,37 @@
             <h2 id="result-title">계산 결과</h2>
           </div>
 
-          <dl class="metrics">
-            <div class="metric is-primary">
-              <dt># Box</dt>
-              <dd id="box-result">0</dd>
-            </div>
-            <div class="metric">
-              <dt>Excess units</dt>
-              <dd id="excess-result">0</dd>
-            </div>
-            <div class="metric">
+          <section class="box-overview" aria-label="Box 요약">
+            <article class="box-card is-full">
+              <div>
+                <span class="box-label">Full boxes</span>
+                <strong><span id="box-result">0</span> boxes</strong>
+              </div>
+              <div class="full-box-row" id="full-box-row" aria-hidden="true"></div>
+            </article>
+
+            <article class="box-card is-excess">
+              <div class="excess-copy">
+                <span class="box-label">Excess box</span>
+                <strong><span id="excess-result">0</span>/12 units</strong>
+              </div>
+              <div class="open-box" aria-hidden="true">
+                <div class="open-box-lid"></div>
+                <div class="excess-unit-grid" id="excess-unit-grid"></div>
+              </div>
+            </article>
+          </section>
+
+          <dl class="mini-metrics">
+            <div>
               <dt># Dozen</dt>
               <dd id="dozen-result">0</dd>
             </div>
-            <div class="metric">
+            <div>
               <dt># Pair</dt>
               <dd id="pair-result">0</dd>
             </div>
           </dl>
-
-          <div class="packing-visual" aria-label="남는 unit 시각화">
-            <div class="visual-header">
-              <span>Excess unit slots</span>
-              <strong id="slot-label">0 / 12</strong>
-            </div>
-            <div class="slot-grid" id="slot-grid" aria-hidden="true"></div>
-          </div>
 
           <output class="summary-output" id="summary-output">
             Units 0 = Box 0 / Excess 0 / Dozen 0 / Pair 0

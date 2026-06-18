@@ -3,8 +3,8 @@ const boxResult = document.querySelector("#box-result");
 const excessResult = document.querySelector("#excess-result");
 const dozenResult = document.querySelector("#dozen-result");
 const pairResult = document.querySelector("#pair-result");
-const slotGrid = document.querySelector("#slot-grid");
-const slotLabel = document.querySelector("#slot-label");
+const fullBoxRow = document.querySelector("#full-box-row");
+const excessUnitGrid = document.querySelector("#excess-unit-grid");
 const summaryOutput = document.querySelector("#summary-output");
 const copyButton = document.querySelector("#copy-button");
 const resetButton = document.querySelector("#reset-button");
@@ -42,16 +42,39 @@ function calculate(units) {
   };
 }
 
-function renderSlots(excessUnits) {
-  slotGrid.replaceChildren();
+function renderFullBoxes(boxes) {
+  fullBoxRow.replaceChildren();
 
-  for (let index = 0; index < BOX_UNIT_COUNT; index += 1) {
-    const slot = document.createElement("span");
-    slot.className = `slot${index < excessUnits ? " is-filled" : ""}`;
-    slotGrid.append(slot);
+  const visibleBoxes = Math.min(boxes, 3);
+
+  for (let index = 0; index < visibleBoxes; index += 1) {
+    const box = document.createElement("span");
+    box.className = "mini-box is-filled";
+    fullBoxRow.append(box);
   }
 
-  slotLabel.textContent = `${formatNumber(excessUnits)} / ${BOX_UNIT_COUNT}`;
+  if (boxes > visibleBoxes) {
+    const badge = document.createElement("span");
+    badge.className = "box-count-badge";
+    badge.textContent = `+${formatNumber(boxes - visibleBoxes)}`;
+    fullBoxRow.append(badge);
+  }
+
+  if (boxes === 0) {
+    const emptyBox = document.createElement("span");
+    emptyBox.className = "mini-box is-empty";
+    fullBoxRow.append(emptyBox);
+  }
+}
+
+function renderExcessBox(excessUnits) {
+  excessUnitGrid.replaceChildren();
+
+  for (let index = 0; index < BOX_UNIT_COUNT; index += 1) {
+    const unit = document.createElement("span");
+    unit.className = `unit-token${index < excessUnits ? " is-filled" : ""}`;
+    excessUnitGrid.append(unit);
+  }
 }
 
 function renderResults() {
@@ -67,7 +90,8 @@ function renderResults() {
   excessResult.textContent = formatNumber(result.excessUnits);
   dozenResult.textContent = formatNumber(result.dozens);
   pairResult.textContent = formatNumber(result.pairs);
-  renderSlots(result.excessUnits);
+  renderFullBoxes(result.boxes);
+  renderExcessBox(result.excessUnits);
 
   lastSummary = [
     "아마존 재고 관리 시스템",
