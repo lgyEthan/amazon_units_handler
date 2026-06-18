@@ -253,6 +253,15 @@ h2 {
   font-weight: 800;
 }
 
+.copy-buffer {
+  position: fixed;
+  left: -9999px;
+  top: 0;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
 .box-overview {
   display: grid;
   grid-template-columns: minmax(145px, 0.72fr) minmax(240px, 1.28fr);

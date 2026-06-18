@@ -8,7 +8,7 @@
       content="아마존 재고 관리 시스템 unit, box, dozen, pair 계산기"
     />
     <title>아마존 재고 관리 시스템</title>
-    <link rel="stylesheet" href="./styles.css?v=20260618-1322" />
+    <link rel="stylesheet" href="./styles.css?v=20260618-1336" />
   </head>
   <body>
     <main class="app-shell">
@@ -53,15 +53,16 @@
           </div>
 
           <div class="formula-band" id="unit-rule">
-            <span>1 box = 12 units</span>
-            <span>1 unit = 0.5 dozen</span>
             <span>1 unit = 6 pairs</span>
+            <span>1 unit = 0.5 dozen</span>
+            <span>1 box = 12 units</span>
           </div>
 
           <div class="form-actions">
             <button type="button" class="secondary-button" id="reset-button">초기화</button>
             <button type="button" class="primary-button" id="copy-button">결과 복사</button>
           </div>
+          <textarea class="copy-buffer" id="copy-buffer" readonly aria-label="복사할 결과"></textarea>
           <p class="copy-status" id="copy-status" role="status" aria-live="polite"></p>
         </form>
 
@@ -110,6 +111,6 @@
       </section>
     </main>
 
-    <script src="./script.js?v=20260618-1322"></script>
+    <script src="./script.js?v=20260618-1336"></script>
   </body>
 </html>

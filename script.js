@@ -9,6 +9,7 @@ const summaryOutput = document.querySelector("#summary-output");
 const copyButton = document.querySelector("#copy-button");
 const resetButton = document.querySelector("#reset-button");
 const copyStatus = document.querySelector("#copy-status");
+const copyBuffer = document.querySelector("#copy-buffer");
 
 const BOX_UNIT_COUNT = 12;
 const DOZEN_PER_UNIT = 0.5;
@@ -94,39 +95,52 @@ function renderResults() {
   renderExcessBox(result.excessUnits);
 
   lastSummary = [
-    "아마존 재고 관리 시스템",
-    `Units: ${formatNumber(result.units)}`,
-    `# Box: ${formatNumber(result.boxes)}`,
-    `Excess units: ${formatNumber(result.excessUnits)}`,
-    `# Dozen: ${formatNumber(result.dozens)}`,
-    `# Pair: ${formatNumber(result.pairs)}`,
+    `Units\t${formatNumber(result.units)}`,
+    `Box\t${formatNumber(result.boxes)}`,
+    `Excess units\t${formatNumber(result.excessUnits)}`,
+    `Dozen\t${formatNumber(result.dozens)}`,
+    `Pair\t${formatNumber(result.pairs)}`,
   ].join("\n");
 
   summaryOutput.textContent =
     `Units ${formatNumber(result.units)} = Box ${formatNumber(result.boxes)} / ` +
     `Excess ${formatNumber(result.excessUnits)} / Dozen ${formatNumber(result.dozens)} / ` +
     `Pair ${formatNumber(result.pairs)}`;
+  copyBuffer.value = lastSummary;
+}
+
+function copyTextWithTextArea(text) {
+  const textArea = document.createElement("textarea");
+  textArea.value = text;
+  textArea.setAttribute("readonly", "");
+  textArea.style.position = "fixed";
+  textArea.style.top = "0";
+  textArea.style.left = "0";
+  textArea.style.width = "1px";
+  textArea.style.height = "1px";
+  textArea.style.opacity = "0";
+  textArea.style.pointerEvents = "none";
+  document.body.append(textArea);
+  textArea.focus();
+  textArea.select();
+  textArea.setSelectionRange(0, textArea.value.length);
+  const didCopy = document.execCommand("copy");
+  textArea.remove();
+
+  return didCopy;
 }
 
 async function copyText(text) {
+  if (copyTextWithTextArea(text)) {
+    return;
+  }
+
   if (navigator.clipboard && window.isSecureContext) {
     await navigator.clipboard.writeText(text);
     return;
   }
 
-  const textArea = document.createElement("textarea");
-  textArea.value = text;
-  textArea.setAttribute("readonly", "");
-  textArea.style.position = "fixed";
-  textArea.style.top = "-999px";
-  document.body.append(textArea);
-  textArea.select();
-  const didCopy = document.execCommand("copy");
-  textArea.remove();
-
-  if (!didCopy) {
-    throw new Error("Copy command was not available.");
-  }
+  throw new Error("Copy command was not available.");
 }
 
 function showCopyStatus(message) {
@@ -159,7 +173,11 @@ copyButton.addEventListener("click", async () => {
     await copyText(lastSummary);
     showCopyStatus("복사 완료");
   } catch {
-    showCopyStatus("복사할 수 없습니다");
+    copyBuffer.hidden = false;
+    copyBuffer.focus();
+    copyBuffer.select();
+    copyBuffer.setSelectionRange(0, copyBuffer.value.length);
+    showCopyStatus("복사할 결과가 선택되었습니다");
   }
 });
 
