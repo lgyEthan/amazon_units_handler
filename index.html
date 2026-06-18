@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="아마존 재고 관리 시스템 unit, box, dozen, pair 계산기"
+    />
+    <title>아마존 재고 관리 시스템</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="hero-strip" aria-labelledby="app-title">
+        <div>
+          <p class="eyebrow">Amazon Inventory Calculator</p>
+          <h1 id="app-title">아마존 재고 관리 시스템</h1>
+        </div>
+        <div class="status-pill" aria-label="로컬 계산">
+          <span class="status-dot"></span>
+          Local Only
+        </div>
+      </section>
+
+      <section class="calculator-grid" aria-label="재고 계산기">
+        <form class="input-panel" id="calculator-form">
+          <div class="panel-heading">
+            <p class="section-label">Input</p>
+            <h2>Unit 수량</h2>
+          </div>
+
+          <label class="unit-field" for="unit-input">
+            <span>Units</span>
+            <input
+              id="unit-input"
+              name="units"
+              type="number"
+              inputmode="numeric"
+              min="0"
+              step="1"
+              value="24"
+              autocomplete="off"
+              aria-describedby="unit-rule"
+            />
+          </label>
+
+          <div class="quick-actions" aria-label="Unit 빠른 조정">
+            <button type="button" class="ghost-button" data-step="-12">-12</button>
+            <button type="button" class="ghost-button" data-step="-1">-1</button>
+            <button type="button" class="ghost-button" data-step="1">+1</button>
+            <button type="button" class="ghost-button" data-step="12">+12</button>
+          </div>
+
+          <div class="formula-band" id="unit-rule">
+            <span>1 box = 12 units</span>
+            <span>1 unit = 0.5 dozen</span>
+            <span>1 unit = 6 pairs</span>
+          </div>
+
+          <div class="form-actions">
+            <button type="button" class="secondary-button" id="reset-button">초기화</button>
+            <button type="button" class="primary-button" id="copy-button">결과 복사</button>
+          </div>
+          <p class="copy-status" id="copy-status" role="status" aria-live="polite"></p>
+        </form>
+
+        <section class="result-panel" aria-labelledby="result-title">
+          <div class="panel-heading">
+            <p class="section-label">Result</p>
+            <h2 id="result-title">계산 결과</h2>
+          </div>
+
+          <dl class="metrics">
+            <div class="metric is-primary">
+              <dt># Box</dt>
+              <dd id="box-result">2</dd>
+            </div>
+            <div class="metric">
+              <dt>Excess units</dt>
+              <dd id="excess-result">0</dd>
+            </div>
+            <div class="metric">
+              <dt># Dozen</dt>
+              <dd id="dozen-result">12</dd>
+            </div>
+            <div class="metric">
+              <dt># Pair</dt>
+              <dd id="pair-result">144</dd>
+            </div>
+          </dl>
+
+          <div class="packing-visual" aria-label="남는 unit 시각화">
+            <div class="visual-header">
+              <span>Excess unit slots</span>
+              <strong id="slot-label">0 / 12</strong>
+            </div>
+            <div class="slot-grid" id="slot-grid" aria-hidden="true"></div>
+          </div>
+
+          <output class="summary-output" id="summary-output">
+            Units 24 = Box 2 / Excess 0 / Dozen 12 / Pair 144
+          </output>
+        </section>
+      </section>
+    </main>
+
+    <script src="./script.js"></script>
+  </body>
+</html>
