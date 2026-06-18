@@ -13,7 +13,7 @@ const copyStatus = document.querySelector("#copy-status");
 const BOX_UNIT_COUNT = 12;
 const DOZEN_PER_UNIT = 0.5;
 const PAIR_PER_UNIT = 6;
-const DEFAULT_UNITS = 24;
+const DEFAULT_UNITS = 0;
 
 let lastSummary = "";
 let copyStatusTimer;
