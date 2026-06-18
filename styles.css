@@ -304,6 +304,7 @@ h2 {
 .box-card.is-excess strong {
   color: #8a5208;
   font-size: 1.35rem;
+  white-space: nowrap;
 }
 
 .full-box-row {
@@ -353,7 +354,8 @@ h2 {
 }
 
 .excess-copy {
-  min-width: 104px;
+  flex: 0 0 auto;
+  min-width: 118px;
 }
 
 .open-box {
@@ -490,9 +492,24 @@ h2 {
 
   .box-card.is-excess {
     align-items: flex-start;
+    gap: 10px;
+    padding: 14px;
   }
 
   .open-box {
-    width: min(168px, 44vw);
+    width: min(146px, 41vw);
+    padding: 18px 10px 10px;
+  }
+
+  .box-card.is-excess strong {
+    font-size: 1.16rem;
+  }
+
+  .excess-unit-grid {
+    gap: 5px;
+  }
+
+  .unit-token {
+    height: 15px;
   }
 }
