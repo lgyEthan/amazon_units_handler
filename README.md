@@ -4,14 +4,15 @@
 
 [아마존 재고 관리 시스템 열기](https://lgyethan.github.io/amazon_units_handler/)
 
-Unit 수량을 입력하면 필요한 box 수량, 남는 unit, dozen, pair를 바로 계산할 수 있습니다.
+Units, Pairs, Dozen 중 원하는 입력 단위를 선택하면 필요한 box 수량, 남는 unit, dozen, pair를 바로 계산할 수 있습니다.
 
 ## 사용 방법
 
 1. 위 링크를 엽니다.
-2. `Units`에 수량을 입력합니다.
-3. `Full boxes`와 `Excess box`를 확인합니다.
-4. 필요한 경우 `결과 복사` 버튼을 눌러 계산 결과를 복사합니다.
+2. `Units`, `Pairs`, `Dozen` 중 입력 단위를 선택합니다.
+3. 수량을 입력합니다. Pairs는 6개 단위, Dozen은 0.5 단위로 입력합니다.
+4. `Full boxes`와 `Excess box`를 확인합니다.
+5. 필요한 경우 `결과 복사` 버튼을 눌러 계산 결과를 복사합니다.
 
 ## 계산 기준
 

@@ -1,0 +1,7 @@
+{
+  "name": "amazon-units-handler",
+  "private": true,
+  "scripts": {
+    "test": "node --test"
+  }
+}

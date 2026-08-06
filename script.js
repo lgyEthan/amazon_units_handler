@@ -1,4 +1,20 @@
-const unitInput = document.querySelector("#unit-input");
+const {
+  BOX_UNIT_COUNT,
+  DEFAULT_INPUT_TYPE,
+  DEFAULT_UNITS,
+  INPUT_TYPES,
+  calculate,
+  convertUnitsToInput,
+  parseInputToUnits,
+} = window.InventoryCalculator;
+
+const calculatorForm = document.querySelector("#calculator-form");
+const quantityInput = document.querySelector("#quantity-input");
+const quantityLabel = document.querySelector("#quantity-label");
+const quantityError = document.querySelector("#quantity-error");
+const inputTypeControls = [...document.querySelectorAll('[name="input-type"]')];
+const quickActions = document.querySelector("#quick-actions");
+const quickActionButtons = [...document.querySelectorAll("[data-step-index]")];
 const boxResult = document.querySelector("#box-result");
 const excessResult = document.querySelector("#excess-result");
 const dozenResult = document.querySelector("#dozen-result");
@@ -11,11 +27,8 @@ const resetButton = document.querySelector("#reset-button");
 const copyStatus = document.querySelector("#copy-status");
 const copyBuffer = document.querySelector("#copy-buffer");
 
-const BOX_UNIT_COUNT = 12;
-const DOZEN_PER_UNIT = 0.5;
-const PAIR_PER_UNIT = 6;
-const DEFAULT_UNITS = 0;
-
+let activeInputType = DEFAULT_INPUT_TYPE;
+let currentUnits = DEFAULT_UNITS;
 let lastSummary = "";
 let copyStatusTimer;
 
@@ -25,22 +38,13 @@ function formatNumber(value) {
   }).format(value);
 }
 
-function parseUnits(value) {
-  const numeric = Number(value);
-  if (!Number.isFinite(numeric) || numeric < 0) {
-    return 0;
-  }
-  return Math.trunc(numeric);
+function formatInputValue(value) {
+  return Number.isInteger(value) ? String(value) : String(Number(value.toFixed(10)));
 }
 
-function calculate(units) {
-  return {
-    units,
-    boxes: Math.floor(units / BOX_UNIT_COUNT),
-    excessUnits: units % BOX_UNIT_COUNT,
-    dozens: units * DOZEN_PER_UNIT,
-    pairs: units * PAIR_PER_UNIT,
-  };
+function formatSignedNumber(value) {
+  const formatted = formatInputValue(Math.abs(value));
+  return `${value > 0 ? "+" : "-"}${formatted}`;
 }
 
 function renderFullBoxes(boxes) {
@@ -79,14 +83,10 @@ function renderExcessBox(excessUnits) {
 }
 
 function renderResults() {
-  const normalizedUnits = parseUnits(unitInput.value);
+  const result = calculate(currentUnits);
 
-  if (unitInput.value !== "" && String(normalizedUnits) !== unitInput.value) {
-    unitInput.value = normalizedUnits;
-  }
-
-  const result = calculate(normalizedUnits);
-
+  summaryOutput.classList.remove("is-invalid");
+  copyButton.disabled = false;
   boxResult.textContent = formatNumber(result.boxes);
   excessResult.textContent = formatNumber(result.excessUnits);
   dozenResult.textContent = formatNumber(result.dozens);
@@ -107,6 +107,73 @@ function renderResults() {
     `Excess ${formatNumber(result.excessUnits)} / Dozen ${formatNumber(result.dozens)} / ` +
     `Pair ${formatNumber(result.pairs)}`;
   copyBuffer.value = lastSummary;
+}
+
+function renderInvalidResults(message) {
+  boxResult.textContent = "—";
+  excessResult.textContent = "—";
+  dozenResult.textContent = "—";
+  pairResult.textContent = "—";
+  renderFullBoxes(0);
+  renderExcessBox(0);
+  summaryOutput.classList.add("is-invalid");
+  summaryOutput.textContent = message;
+  lastSummary = "";
+  copyBuffer.value = "";
+  copyBuffer.hidden = true;
+  copyButton.disabled = true;
+}
+
+function clearInputError() {
+  quantityInput.removeAttribute("aria-invalid");
+  quantityInput.setCustomValidity("");
+  quantityError.textContent = "";
+}
+
+function showInputError(message) {
+  quantityInput.setAttribute("aria-invalid", "true");
+  quantityInput.setCustomValidity(message);
+  quantityError.textContent = message;
+}
+
+function processQuantityInput({ normalize = false } = {}) {
+  const parsed = parseInputToUnits(quantityInput.value, activeInputType);
+
+  if (!parsed.isValid) {
+    showInputError(parsed.message);
+    renderInvalidResults(parsed.message);
+    return false;
+  }
+
+  clearInputError();
+  currentUnits = parsed.units;
+
+  if (
+    quantityInput.value !== "" &&
+    (normalize || activeInputType === "units") &&
+    formatInputValue(parsed.normalizedInput) !== quantityInput.value
+  ) {
+    quantityInput.value = formatInputValue(parsed.normalizedInput);
+  }
+
+  renderResults();
+  return true;
+}
+
+function updateInputControls() {
+  const config = INPUT_TYPES[activeInputType];
+  quantityLabel.textContent = config.label;
+  quantityInput.name = activeInputType;
+  quantityInput.step = String(config.step);
+  quantityInput.inputMode = config.inputMode;
+  quickActions.setAttribute("aria-label", `${config.label} 빠른 조정`);
+
+  quickActionButtons.forEach((button, index) => {
+    const step = config.quickSteps[index];
+    button.dataset.step = String(step);
+    button.textContent = formatSignedNumber(step);
+    button.setAttribute("aria-label", `${config.label} ${formatSignedNumber(step)}`);
+  });
 }
 
 function copyTextWithTextArea(text) {
@@ -131,12 +198,16 @@ function copyTextWithTextArea(text) {
 }
 
 async function copyText(text) {
-  if (copyTextWithTextArea(text)) {
-    return;
+  if (navigator.clipboard && window.isSecureContext) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return;
+    } catch {
+      // Fall through to the legacy copy command for older or restricted browsers.
+    }
   }
 
-  if (navigator.clipboard && window.isSecureContext) {
-    await navigator.clipboard.writeText(text);
+  if (copyTextWithTextArea(text)) {
     return;
   }
 
@@ -151,26 +222,51 @@ function showCopyStatus(message) {
   }, 1800);
 }
 
-document.querySelectorAll("[data-step]").forEach((button) => {
+calculatorForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+});
+
+quickActionButtons.forEach((button) => {
   button.addEventListener("click", () => {
-    const nextValue = parseUnits(unitInput.value) + Number(button.dataset.step);
-    unitInput.value = Math.max(0, nextValue);
-    renderResults();
-    unitInput.focus();
+    const currentInputValue = convertUnitsToInput(currentUnits, activeInputType);
+    const nextValue = Math.max(0, currentInputValue + Number(button.dataset.step));
+    quantityInput.value = formatInputValue(nextValue);
+    processQuantityInput({ normalize: true });
+    quantityInput.focus();
   });
 });
 
-unitInput.addEventListener("input", renderResults);
+inputTypeControls.forEach((control) => {
+  control.addEventListener("change", () => {
+    if (!control.checked) {
+      return;
+    }
+
+    activeInputType = control.value;
+    quantityInput.value = formatInputValue(convertUnitsToInput(currentUnits, activeInputType));
+    clearInputError();
+    updateInputControls();
+    renderResults();
+    quantityInput.focus();
+  });
+});
+
+quantityInput.addEventListener("input", () => processQuantityInput());
+quantityInput.addEventListener("blur", () => processQuantityInput({ normalize: true }));
 
 resetButton.addEventListener("click", () => {
-  unitInput.value = DEFAULT_UNITS;
+  currentUnits = DEFAULT_UNITS;
+  quantityInput.value = formatInputValue(convertUnitsToInput(currentUnits, activeInputType));
+  copyBuffer.hidden = true;
+  clearInputError();
   renderResults();
-  unitInput.focus();
+  quantityInput.focus();
 });
 
 copyButton.addEventListener("click", async () => {
   try {
     await copyText(lastSummary);
+    copyBuffer.hidden = true;
     showCopyStatus("복사 완료");
   } catch {
     copyBuffer.hidden = false;
@@ -181,4 +277,5 @@ copyButton.addEventListener("click", async () => {
   }
 });
 
+updateInputControls();
 renderResults();
