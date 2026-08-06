@@ -5,6 +5,7 @@ const {
   INPUT_TYPES,
   calculate,
   convertUnitsToInput,
+  getResultMetrics,
   parseInputToUnits,
 } = require("../calculator.js");
 
@@ -75,4 +76,21 @@ test("Pairs and Dozen reject negative quantities instead of displaying a stale z
 
 test("unknown input types safely fall back to Units", () => {
   assert.deepEqual(parseInputToUnits("13", "unknown"), parseInputToUnits("13", "units"));
+});
+
+test("result cards omit the selected input type", () => {
+  const result = calculate(24);
+
+  assert.deepEqual(getResultMetrics(result, "units"), [
+    { key: "dozens", label: "# Dozen", value: 12 },
+    { key: "pairs", label: "# Pair", value: 144 },
+  ]);
+  assert.deepEqual(getResultMetrics(result, "pairs"), [
+    { key: "units", label: "# Units", value: 24 },
+    { key: "dozens", label: "# Dozen", value: 12 },
+  ]);
+  assert.deepEqual(getResultMetrics(result, "dozen"), [
+    { key: "units", label: "# Units", value: 24 },
+    { key: "pairs", label: "# Pair", value: 144 },
+  ]);
 });

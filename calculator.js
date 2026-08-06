@@ -29,6 +29,21 @@
     }),
   });
 
+  const RESULT_METRICS = Object.freeze({
+    units: Object.freeze([
+      Object.freeze({ key: "dozens", label: "# Dozen" }),
+      Object.freeze({ key: "pairs", label: "# Pair" }),
+    ]),
+    pairs: Object.freeze([
+      Object.freeze({ key: "units", label: "# Units" }),
+      Object.freeze({ key: "dozens", label: "# Dozen" }),
+    ]),
+    dozen: Object.freeze([
+      Object.freeze({ key: "units", label: "# Units" }),
+      Object.freeze({ key: "pairs", label: "# Pair" }),
+    ]),
+  });
+
   const DEFAULT_INPUT_TYPE = "units";
   const DEFAULT_UNITS = 0;
   const FLOAT_TOLERANCE = 1e-9;
@@ -100,6 +115,16 @@
     };
   }
 
+  function getResultMetrics(result, inputType) {
+    const resolvedType = resolveInputType(inputType);
+
+    return RESULT_METRICS[resolvedType].map(({ key, label }) => ({
+      key,
+      label,
+      value: result[key],
+    }));
+  }
+
   const api = Object.freeze({
     BOX_UNIT_COUNT,
     DEFAULT_INPUT_TYPE,
@@ -107,8 +132,10 @@
     DOZEN_PER_UNIT,
     INPUT_TYPES,
     PAIR_PER_UNIT,
+    RESULT_METRICS,
     calculate,
     convertUnitsToInput,
+    getResultMetrics,
     parseInputToUnits,
     resolveInputType,
   });

@@ -5,6 +5,7 @@ const {
   INPUT_TYPES,
   calculate,
   convertUnitsToInput,
+  getResultMetrics,
   parseInputToUnits,
 } = window.InventoryCalculator;
 
@@ -17,8 +18,10 @@ const quickActions = document.querySelector("#quick-actions");
 const quickActionButtons = [...document.querySelectorAll("[data-step-index]")];
 const boxResult = document.querySelector("#box-result");
 const excessResult = document.querySelector("#excess-result");
-const dozenResult = document.querySelector("#dozen-result");
-const pairResult = document.querySelector("#pair-result");
+const metricOneLabel = document.querySelector("#metric-one-label");
+const metricOneResult = document.querySelector("#metric-one-result");
+const metricTwoLabel = document.querySelector("#metric-two-label");
+const metricTwoResult = document.querySelector("#metric-two-result");
 const fullBoxRow = document.querySelector("#full-box-row");
 const excessUnitGrid = document.querySelector("#excess-unit-grid");
 const summaryOutput = document.querySelector("#summary-output");
@@ -82,6 +85,39 @@ function renderExcessBox(excessUnits) {
   }
 }
 
+function renderResultMetrics(result) {
+  const [firstMetric, secondMetric] = getResultMetrics(result, activeInputType);
+
+  metricOneLabel.textContent = firstMetric.label;
+  metricOneResult.textContent = formatNumber(firstMetric.value);
+  metricTwoLabel.textContent = secondMetric.label;
+  metricTwoResult.textContent = formatNumber(secondMetric.value);
+}
+
+function buildVisibleSummary(result) {
+  if (activeInputType === "pairs") {
+    return (
+      `Pairs ${formatNumber(result.pairs)} = Units ${formatNumber(result.units)} / ` +
+      `Box ${formatNumber(result.boxes)} / Excess ${formatNumber(result.excessUnits)} / ` +
+      `Dozen ${formatNumber(result.dozens)}`
+    );
+  }
+
+  if (activeInputType === "dozen") {
+    return (
+      `Dozen ${formatNumber(result.dozens)} = Units ${formatNumber(result.units)} / ` +
+      `Box ${formatNumber(result.boxes)} / Excess ${formatNumber(result.excessUnits)} / ` +
+      `Pair ${formatNumber(result.pairs)}`
+    );
+  }
+
+  return (
+    `Units ${formatNumber(result.units)} = Box ${formatNumber(result.boxes)} / ` +
+    `Excess ${formatNumber(result.excessUnits)} / Dozen ${formatNumber(result.dozens)} / ` +
+    `Pair ${formatNumber(result.pairs)}`
+  );
+}
+
 function renderResults() {
   const result = calculate(currentUnits);
 
@@ -89,8 +125,7 @@ function renderResults() {
   copyButton.disabled = false;
   boxResult.textContent = formatNumber(result.boxes);
   excessResult.textContent = formatNumber(result.excessUnits);
-  dozenResult.textContent = formatNumber(result.dozens);
-  pairResult.textContent = formatNumber(result.pairs);
+  renderResultMetrics(result);
   renderFullBoxes(result.boxes);
   renderExcessBox(result.excessUnits);
 
@@ -102,18 +137,15 @@ function renderResults() {
     `Pair\t${formatNumber(result.pairs)}`,
   ].join("\n");
 
-  summaryOutput.textContent =
-    `Units ${formatNumber(result.units)} = Box ${formatNumber(result.boxes)} / ` +
-    `Excess ${formatNumber(result.excessUnits)} / Dozen ${formatNumber(result.dozens)} / ` +
-    `Pair ${formatNumber(result.pairs)}`;
+  summaryOutput.textContent = buildVisibleSummary(result);
   copyBuffer.value = lastSummary;
 }
 
 function renderInvalidResults(message) {
   boxResult.textContent = "—";
   excessResult.textContent = "—";
-  dozenResult.textContent = "—";
-  pairResult.textContent = "—";
+  metricOneResult.textContent = "—";
+  metricTwoResult.textContent = "—";
   renderFullBoxes(0);
   renderExcessBox(0);
   summaryOutput.classList.add("is-invalid");
