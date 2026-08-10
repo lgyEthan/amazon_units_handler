@@ -5,10 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta
       name="description"
-      content="아마존 재고 관리 시스템 unit, box, dozen, pair 계산기"
+      content="아마존 재고 관리 시스템 unit, pair, dozen, Hybrid Box, 대박스 계산기"
     />
     <title>아마존 재고 관리 시스템</title>
-    <link rel="stylesheet" href="./styles.css?v=20260806-2" />
+    <link rel="stylesheet" href="./styles.css?v=20260810-1" />
   </head>
   <body>
     <main class="app-shell">
@@ -48,6 +48,26 @@
             </div>
           </fieldset>
 
+          <fieldset class="input-type-field box-type-field">
+            <legend>박스 기준</legend>
+            <div class="input-type-options box-type-options">
+              <label class="input-type-option box-type-option">
+                <input type="radio" name="box-type" value="hybrid" checked />
+                <span>
+                  <strong>Hybrid Box</strong>
+                  <small>12 units</small>
+                </span>
+              </label>
+              <label class="input-type-option box-type-option">
+                <input type="radio" name="box-type" value="large" />
+                <span>
+                  <strong>대박스</strong>
+                  <small>18 units</small>
+                </span>
+              </label>
+            </div>
+          </fieldset>
+
           <label class="quantity-field" for="quantity-input">
             <span id="quantity-label">Units</span>
             <input
@@ -74,7 +94,7 @@
           <div class="formula-band" id="conversion-rule">
             <span>1 unit = 6 pairs</span>
             <span>1 unit = 0.5 dozen</span>
-            <span>1 box = 12 units</span>
+            <span id="box-rule">1 Hybrid Box = 12 units</span>
           </div>
 
           <div class="form-actions">
@@ -92,12 +112,19 @@
         </form>
 
         <section class="result-panel" aria-labelledby="result-title">
-          <div class="panel-heading">
-            <p class="section-label">Result</p>
-            <h2 id="result-title">계산 결과</h2>
+          <div class="result-heading">
+            <div class="panel-heading">
+              <p class="section-label">Result</p>
+              <h2 id="result-title">계산 결과</h2>
+            </div>
+            <span class="box-type-badge" id="active-box-type">Hybrid Box · 12 units</span>
           </div>
 
-          <section class="box-overview" aria-label="Box 요약">
+          <section
+            class="box-overview"
+            id="box-overview"
+            aria-label="Hybrid Box 12 units 기준 Box 요약"
+          >
             <article class="box-card is-full">
               <div>
                 <span class="box-label">Full boxes</span>
@@ -109,7 +136,10 @@
             <article class="box-card is-excess">
               <div class="excess-copy">
                 <span class="box-label">Excess box</span>
-                <strong><span id="excess-result">0</span>/12 units</strong>
+                <strong
+                  ><span id="excess-result">0</span>/<span id="excess-capacity">12</span>
+                  units</strong
+                >
               </div>
               <div class="open-box" aria-hidden="true">
                 <div class="open-box-lid"></div>
@@ -129,14 +159,20 @@
             </div>
           </dl>
 
-          <div class="summary-output" id="summary-output">
-            Units 0 = Box 0 / Excess 0 / Dozen 0 / Pair 0
+          <div
+            class="summary-output"
+            id="summary-output"
+            role="status"
+            aria-live="polite"
+            aria-atomic="true"
+          >
+            Units 0 = Hybrid Box(12) 0 / Excess 0 / Dozen 0 / Pair 0
           </div>
         </section>
       </section>
     </main>
 
-    <script src="./calculator.js?v=20260806-2"></script>
-    <script src="./script.js?v=20260806-2"></script>
+    <script src="./calculator.js?v=20260810-1"></script>
+    <script src="./script.js?v=20260810-1"></script>
   </body>
 </html>

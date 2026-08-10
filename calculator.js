@@ -2,8 +2,20 @@
   "use strict";
 
   const BOX_UNIT_COUNT = 12;
+  const LARGE_BOX_UNIT_COUNT = 18;
   const DOZEN_PER_UNIT = 0.5;
   const PAIR_PER_UNIT = 6;
+
+  const BOX_TYPES = Object.freeze({
+    hybrid: Object.freeze({
+      label: "Hybrid Box",
+      unitCount: BOX_UNIT_COUNT,
+    }),
+    large: Object.freeze({
+      label: "대박스",
+      unitCount: LARGE_BOX_UNIT_COUNT,
+    }),
+  });
 
   const INPUT_TYPES = Object.freeze({
     units: Object.freeze({
@@ -11,21 +23,18 @@
       inputPerUnit: 1,
       step: 1,
       inputMode: "numeric",
-      quickSteps: Object.freeze([-12, -1, 1, 12]),
     }),
     pairs: Object.freeze({
       label: "Pairs",
       inputPerUnit: PAIR_PER_UNIT,
       step: PAIR_PER_UNIT,
       inputMode: "numeric",
-      quickSteps: Object.freeze([-72, -6, 6, 72]),
     }),
     dozen: Object.freeze({
       label: "Dozen",
       inputPerUnit: DOZEN_PER_UNIT,
       step: DOZEN_PER_UNIT,
       inputMode: "decimal",
-      quickSteps: Object.freeze([-6, -0.5, 0.5, 6]),
     }),
   });
 
@@ -44,9 +53,14 @@
     ]),
   });
 
+  const DEFAULT_BOX_TYPE = "hybrid";
   const DEFAULT_INPUT_TYPE = "units";
   const DEFAULT_UNITS = 0;
   const FLOAT_TOLERANCE = 1e-9;
+
+  function resolveBoxType(boxType) {
+    return Object.hasOwn(BOX_TYPES, boxType) ? boxType : DEFAULT_BOX_TYPE;
+  }
 
   function resolveInputType(inputType) {
     return Object.hasOwn(INPUT_TYPES, inputType) ? inputType : DEFAULT_INPUT_TYPE;
@@ -55,6 +69,15 @@
   function convertUnitsToInput(units, inputType) {
     const resolvedType = resolveInputType(inputType);
     return units * INPUT_TYPES[resolvedType].inputPerUnit;
+  }
+
+  function getQuickSteps(inputType, boxType) {
+    const resolvedInputType = resolveInputType(inputType);
+    const resolvedBoxType = resolveBoxType(boxType);
+    const inputPerUnit = INPUT_TYPES[resolvedInputType].inputPerUnit;
+    const boxInputCount = BOX_TYPES[resolvedBoxType].unitCount * inputPerUnit;
+
+    return [-boxInputCount, -inputPerUnit, inputPerUnit, boxInputCount];
   }
 
   function parseInputToUnits(value, inputType) {
@@ -105,11 +128,14 @@
     };
   }
 
-  function calculate(units) {
+  function calculate(units, boxType = DEFAULT_BOX_TYPE) {
+    const resolvedBoxType = resolveBoxType(boxType);
+    const boxUnitCount = BOX_TYPES[resolvedBoxType].unitCount;
+
     return {
       units,
-      boxes: Math.floor(units / BOX_UNIT_COUNT),
-      excessUnits: units % BOX_UNIT_COUNT,
+      boxes: Math.floor(units / boxUnitCount),
+      excessUnits: units % boxUnitCount,
       dozens: units * DOZEN_PER_UNIT,
       pairs: units * PAIR_PER_UNIT,
     };
@@ -126,17 +152,22 @@
   }
 
   const api = Object.freeze({
+    BOX_TYPES,
     BOX_UNIT_COUNT,
+    DEFAULT_BOX_TYPE,
     DEFAULT_INPUT_TYPE,
     DEFAULT_UNITS,
     DOZEN_PER_UNIT,
     INPUT_TYPES,
+    LARGE_BOX_UNIT_COUNT,
     PAIR_PER_UNIT,
     RESULT_METRICS,
     calculate,
     convertUnitsToInput,
+    getQuickSteps,
     getResultMetrics,
     parseInputToUnits,
+    resolveBoxType,
     resolveInputType,
   });
 

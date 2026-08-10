@@ -1,10 +1,12 @@
 const {
-  BOX_UNIT_COUNT,
+  BOX_TYPES,
+  DEFAULT_BOX_TYPE,
   DEFAULT_INPUT_TYPE,
   DEFAULT_UNITS,
   INPUT_TYPES,
   calculate,
   convertUnitsToInput,
+  getQuickSteps,
   getResultMetrics,
   parseInputToUnits,
 } = window.InventoryCalculator;
@@ -14,10 +16,15 @@ const quantityInput = document.querySelector("#quantity-input");
 const quantityLabel = document.querySelector("#quantity-label");
 const quantityError = document.querySelector("#quantity-error");
 const inputTypeControls = [...document.querySelectorAll('[name="input-type"]')];
+const boxTypeControls = [...document.querySelectorAll('[name="box-type"]')];
 const quickActions = document.querySelector("#quick-actions");
 const quickActionButtons = [...document.querySelectorAll("[data-step-index]")];
+const activeBoxTypeBadge = document.querySelector("#active-box-type");
+const boxOverview = document.querySelector("#box-overview");
+const boxRule = document.querySelector("#box-rule");
 const boxResult = document.querySelector("#box-result");
 const excessResult = document.querySelector("#excess-result");
+const excessCapacity = document.querySelector("#excess-capacity");
 const metricOneLabel = document.querySelector("#metric-one-label");
 const metricOneResult = document.querySelector("#metric-one-result");
 const metricTwoLabel = document.querySelector("#metric-two-label");
@@ -30,6 +37,7 @@ const resetButton = document.querySelector("#reset-button");
 const copyStatus = document.querySelector("#copy-status");
 const copyBuffer = document.querySelector("#copy-buffer");
 
+let activeBoxType = DEFAULT_BOX_TYPE;
 let activeInputType = DEFAULT_INPUT_TYPE;
 let currentUnits = DEFAULT_UNITS;
 let lastSummary = "";
@@ -75,10 +83,10 @@ function renderFullBoxes(boxes) {
   }
 }
 
-function renderExcessBox(excessUnits) {
+function renderExcessBox(excessUnits, boxUnitCount) {
   excessUnitGrid.replaceChildren();
 
-  for (let index = 0; index < BOX_UNIT_COUNT; index += 1) {
+  for (let index = 0; index < boxUnitCount; index += 1) {
     const unit = document.createElement("span");
     unit.className = `unit-token${index < excessUnits ? " is-filled" : ""}`;
     excessUnitGrid.append(unit);
@@ -95,10 +103,13 @@ function renderResultMetrics(result) {
 }
 
 function buildVisibleSummary(result) {
+  const boxConfig = BOX_TYPES[activeBoxType];
+  const boxSummary = `${boxConfig.label}(${boxConfig.unitCount})`;
+
   if (activeInputType === "pairs") {
     return (
       `Pairs ${formatNumber(result.pairs)} = Units ${formatNumber(result.units)} / ` +
-      `Box ${formatNumber(result.boxes)} / Excess ${formatNumber(result.excessUnits)} / ` +
+      `${boxSummary} ${formatNumber(result.boxes)} / Excess ${formatNumber(result.excessUnits)} / ` +
       `Dozen ${formatNumber(result.dozens)}`
     );
   }
@@ -106,20 +117,21 @@ function buildVisibleSummary(result) {
   if (activeInputType === "dozen") {
     return (
       `Dozen ${formatNumber(result.dozens)} = Units ${formatNumber(result.units)} / ` +
-      `Box ${formatNumber(result.boxes)} / Excess ${formatNumber(result.excessUnits)} / ` +
+      `${boxSummary} ${formatNumber(result.boxes)} / Excess ${formatNumber(result.excessUnits)} / ` +
       `Pair ${formatNumber(result.pairs)}`
     );
   }
 
   return (
-    `Units ${formatNumber(result.units)} = Box ${formatNumber(result.boxes)} / ` +
+    `Units ${formatNumber(result.units)} = ${boxSummary} ${formatNumber(result.boxes)} / ` +
     `Excess ${formatNumber(result.excessUnits)} / Dozen ${formatNumber(result.dozens)} / ` +
     `Pair ${formatNumber(result.pairs)}`
   );
 }
 
 function renderResults() {
-  const result = calculate(currentUnits);
+  const boxConfig = BOX_TYPES[activeBoxType];
+  const result = calculate(currentUnits, activeBoxType);
 
   summaryOutput.classList.remove("is-invalid");
   copyButton.disabled = false;
@@ -127,7 +139,7 @@ function renderResults() {
   excessResult.textContent = formatNumber(result.excessUnits);
   renderResultMetrics(result);
   renderFullBoxes(result.boxes);
-  renderExcessBox(result.excessUnits);
+  renderExcessBox(result.excessUnits, boxConfig.unitCount);
 
   lastSummary = [
     `Units\t${formatNumber(result.units)}`,
@@ -142,12 +154,14 @@ function renderResults() {
 }
 
 function renderInvalidResults(message) {
+  const boxConfig = BOX_TYPES[activeBoxType];
+
   boxResult.textContent = "—";
   excessResult.textContent = "—";
   metricOneResult.textContent = "—";
   metricTwoResult.textContent = "—";
   renderFullBoxes(0);
-  renderExcessBox(0);
+  renderExcessBox(0, boxConfig.unitCount);
   summaryOutput.classList.add("is-invalid");
   summaryOutput.textContent = message;
   lastSummary = "";
@@ -194,6 +208,7 @@ function processQuantityInput({ normalize = false } = {}) {
 
 function updateInputControls() {
   const config = INPUT_TYPES[activeInputType];
+  const quickSteps = getQuickSteps(activeInputType, activeBoxType);
   quantityLabel.textContent = config.label;
   quantityInput.name = activeInputType;
   quantityInput.step = String(config.step);
@@ -201,11 +216,20 @@ function updateInputControls() {
   quickActions.setAttribute("aria-label", `${config.label} 빠른 조정`);
 
   quickActionButtons.forEach((button, index) => {
-    const step = config.quickSteps[index];
+    const step = quickSteps[index];
     button.dataset.step = String(step);
     button.textContent = formatSignedNumber(step);
     button.setAttribute("aria-label", `${config.label} ${formatSignedNumber(step)}`);
   });
+}
+
+function updateBoxControls() {
+  const config = BOX_TYPES[activeBoxType];
+
+  activeBoxTypeBadge.textContent = `${config.label} · ${config.unitCount} units`;
+  boxOverview.setAttribute("aria-label", `${config.label} ${config.unitCount} units 기준 Box 요약`);
+  boxRule.textContent = `1 ${config.label} = ${config.unitCount} units`;
+  excessCapacity.textContent = formatNumber(config.unitCount);
 }
 
 function copyTextWithTextArea(text) {
@@ -279,7 +303,19 @@ inputTypeControls.forEach((control) => {
     clearInputError();
     updateInputControls();
     renderResults();
-    quantityInput.focus();
+  });
+});
+
+boxTypeControls.forEach((control) => {
+  control.addEventListener("change", () => {
+    if (!control.checked) {
+      return;
+    }
+
+    activeBoxType = control.value;
+    updateBoxControls();
+    updateInputControls();
+    processQuantityInput();
   });
 });
 
@@ -309,5 +345,6 @@ copyButton.addEventListener("click", async () => {
   }
 });
 
+updateBoxControls();
 updateInputControls();
 renderResults();

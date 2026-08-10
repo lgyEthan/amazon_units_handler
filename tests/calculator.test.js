@@ -2,11 +2,14 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 
 const {
+  BOX_TYPES,
   INPUT_TYPES,
   calculate,
   convertUnitsToInput,
+  getQuickSteps,
   getResultMetrics,
   parseInputToUnits,
+  resolveBoxType,
 } = require("../calculator.js");
 
 function legacyCalculate(units) {
@@ -19,11 +22,39 @@ function legacyCalculate(units) {
   };
 }
 
+function expectedCalculate(units, boxUnitCount) {
+  return {
+    units,
+    boxes: Math.floor(units / boxUnitCount),
+    excessUnits: units % boxUnitCount,
+    dozens: units * 0.5,
+    pairs: units * 6,
+  };
+}
+
 test("Unit mode is identical to the legacy calculator for 0 through 1,000,000", () => {
   for (let units = 0; units <= 1_000_000; units += 1) {
     const parsed = parseInputToUnits(String(units), "units");
     assert.equal(parsed.isValid, true);
     assert.deepEqual(calculate(parsed.units), legacyCalculate(units));
+  }
+});
+
+test("all six input and box combinations match the independent formula for 0 through 1,000,000 units", () => {
+  for (let units = 0; units <= 1_000_000; units += 1) {
+    for (const inputType of Object.keys(INPUT_TYPES)) {
+      const input = convertUnitsToInput(units, inputType);
+      const parsed = parseInputToUnits(String(input), inputType);
+      assert.equal(parsed.isValid, true, `${input} ${inputType} should be valid`);
+      assert.equal(parsed.units, units);
+
+      for (const [boxType, boxConfig] of Object.entries(BOX_TYPES)) {
+        const actual = calculate(parsed.units, boxType);
+        assert.deepEqual(actual, expectedCalculate(units, boxConfig.unitCount));
+        assert.equal(actual.boxes * boxConfig.unitCount + actual.excessUnits, units);
+        assert.ok(actual.excessUnits >= 0 && actual.excessUnits < boxConfig.unitCount);
+      }
+    }
   }
 });
 
@@ -49,9 +80,31 @@ test("equivalent Units, Pairs, and Dozen inputs return identical results", () =>
       const input = convertUnitsToInput(units, inputType);
       const parsed = parseInputToUnits(String(input), inputType);
       assert.equal(parsed.isValid, true, `${input} ${inputType} should be valid`);
-      assert.deepEqual(calculate(parsed.units), expected);
+      assert.deepEqual(calculate(parsed.units, "hybrid"), expected);
     }
   }
+});
+
+test("Hybrid and large box boundaries use 12 and 18 units without changing conversions", () => {
+  const fixtures = [0, 1, 11, 12, 13, 17, 18, 19, 23, 24, 25, 35, 36, 37, 1_000_000];
+
+  for (const units of fixtures) {
+    assert.deepEqual(calculate(units, "hybrid"), expectedCalculate(units, 12));
+    assert.deepEqual(calculate(units, "large"), expectedCalculate(units, 18));
+  }
+});
+
+test("quick adjustments follow both box capacities for every input type", () => {
+  for (const config of Object.values(INPUT_TYPES)) {
+    assert.equal(Object.hasOwn(config, "quickSteps"), false);
+  }
+
+  assert.deepEqual(getQuickSteps("units", "hybrid"), [-12, -1, 1, 12]);
+  assert.deepEqual(getQuickSteps("pairs", "hybrid"), [-72, -6, 6, 72]);
+  assert.deepEqual(getQuickSteps("dozen", "hybrid"), [-6, -0.5, 0.5, 6]);
+  assert.deepEqual(getQuickSteps("units", "large"), [-18, -1, 1, 18]);
+  assert.deepEqual(getQuickSteps("pairs", "large"), [-108, -6, 6, 108]);
+  assert.deepEqual(getQuickSteps("dozen", "large"), [-9, -0.5, 0.5, 9]);
 });
 
 test("Pairs and Dozen reject quantities that would silently discard partial Units", () => {
@@ -76,6 +129,12 @@ test("Pairs and Dozen reject negative quantities instead of displaying a stale z
 
 test("unknown input types safely fall back to Units", () => {
   assert.deepEqual(parseInputToUnits("13", "unknown"), parseInputToUnits("13", "units"));
+});
+
+test("unknown box types safely fall back to Hybrid Box", () => {
+  assert.equal(resolveBoxType("unknown"), "hybrid");
+  assert.deepEqual(calculate(37, "unknown"), calculate(37, "hybrid"));
+  assert.deepEqual(getQuickSteps("pairs", "unknown"), getQuickSteps("pairs", "hybrid"));
 });
 
 test("result cards omit the selected input type", () => {

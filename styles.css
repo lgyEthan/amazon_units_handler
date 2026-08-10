@@ -167,6 +167,10 @@ h2 {
   gap: 8px;
 }
 
+.box-type-options {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .input-type-option {
   position: relative;
   min-width: 0;
@@ -198,6 +202,26 @@ h2 {
   background: #e9f7f5;
   color: var(--teal-dark);
   box-shadow: inset 0 -3px 0 var(--teal);
+}
+
+.box-type-option span {
+  flex-direction: column;
+  gap: 3px;
+  min-height: 58px;
+}
+
+.box-type-option strong {
+  font-size: 0.92rem;
+}
+
+.box-type-option small {
+  color: #7a8496;
+  font-size: 0.76rem;
+  font-weight: 750;
+}
+
+.box-type-option input:checked + span small {
+  color: var(--teal-dark);
 }
 
 .input-type-option input:focus-visible + span,
@@ -346,6 +370,27 @@ button:disabled {
   display: grid;
   grid-template-columns: minmax(145px, 0.72fr) minmax(240px, 1.28fr);
   gap: 12px;
+}
+
+.result-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.box-type-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 0 10px;
+  border: 1px solid rgba(8, 127, 122, 0.24);
+  border-radius: 999px;
+  background: #edf8f7;
+  color: var(--teal-dark);
+  font-size: 0.76rem;
+  font-weight: 850;
+  white-space: nowrap;
 }
 
 .box-card {
@@ -580,6 +625,12 @@ button:disabled {
 
   .box-overview {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .result-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 10px;
   }
 
   .box-card,
