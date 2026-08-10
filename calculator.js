@@ -21,19 +21,22 @@
     units: Object.freeze({
       label: "Units",
       inputPerUnit: 1,
-      step: 1,
-      inputMode: "numeric",
+      step: "any",
+      quickStep: 1,
+      inputMode: "decimal",
     }),
     pairs: Object.freeze({
       label: "Pairs",
       inputPerUnit: PAIR_PER_UNIT,
-      step: PAIR_PER_UNIT,
-      inputMode: "numeric",
+      step: "any",
+      quickStep: 1,
+      inputMode: "decimal",
     }),
     dozen: Object.freeze({
       label: "Dozen",
       inputPerUnit: DOZEN_PER_UNIT,
-      step: DOZEN_PER_UNIT,
+      step: "any",
+      quickStep: DOZEN_PER_UNIT,
       inputMode: "decimal",
     }),
   });
@@ -56,7 +59,6 @@
   const DEFAULT_BOX_TYPE = "hybrid";
   const DEFAULT_INPUT_TYPE = "units";
   const DEFAULT_UNITS = 0;
-  const FLOAT_TOLERANCE = 1e-9;
 
   function resolveBoxType(boxType) {
     return Object.hasOwn(BOX_TYPES, boxType) ? boxType : DEFAULT_BOX_TYPE;
@@ -74,56 +76,30 @@
   function getQuickSteps(inputType, boxType) {
     const resolvedInputType = resolveInputType(inputType);
     const resolvedBoxType = resolveBoxType(boxType);
-    const inputPerUnit = INPUT_TYPES[resolvedInputType].inputPerUnit;
+    const inputConfig = INPUT_TYPES[resolvedInputType];
+    const inputPerUnit = inputConfig.inputPerUnit;
     const boxInputCount = BOX_TYPES[resolvedBoxType].unitCount * inputPerUnit;
 
-    return [-boxInputCount, -inputPerUnit, inputPerUnit, boxInputCount];
+    return [-boxInputCount, -inputConfig.quickStep, inputConfig.quickStep, boxInputCount];
   }
 
   function parseInputToUnits(value, inputType) {
     const resolvedType = resolveInputType(inputType);
     const rawNumeric = Number(value);
-    const numeric = Number.isFinite(rawNumeric) && rawNumeric >= 0 ? rawNumeric : 0;
-
-    if (resolvedType === "units") {
-      const units = Math.trunc(numeric);
-      return {
-        isValid: true,
-        units,
-        normalizedInput: units,
-        message: "",
-      };
-    }
 
     if (!Number.isFinite(rawNumeric) || rawNumeric < 0) {
       return {
         isValid: false,
         units: null,
-        normalizedInput: numeric,
+        normalizedInput: 0,
         message: `${INPUT_TYPES[resolvedType].label}는 0 이상의 수량을 입력해 주세요.`,
-      };
-    }
-
-    const rawUnits = numeric / INPUT_TYPES[resolvedType].inputPerUnit;
-    const roundedUnits = Math.round(rawUnits);
-    const isWholeUnit = Math.abs(rawUnits - roundedUnits) <= FLOAT_TOLERANCE;
-
-    if (!isWholeUnit) {
-      return {
-        isValid: false,
-        units: null,
-        normalizedInput: numeric,
-        message:
-          resolvedType === "pairs"
-            ? "Pairs는 6개 단위로 입력해 주세요. (6 pairs = 1 unit)"
-            : "Dozen은 0.5 단위로 입력해 주세요. (0.5 dozen = 1 unit)",
       };
     }
 
     return {
       isValid: true,
-      units: roundedUnits,
-      normalizedInput: convertUnitsToInput(roundedUnits, resolvedType),
+      units: rawNumeric / INPUT_TYPES[resolvedType].inputPerUnit,
+      normalizedInput: rawNumeric,
       message: "",
     };
   }
@@ -131,11 +107,12 @@
   function calculate(units, boxType = DEFAULT_BOX_TYPE) {
     const resolvedBoxType = resolveBoxType(boxType);
     const boxUnitCount = BOX_TYPES[resolvedBoxType].unitCount;
+    const boxes = Math.floor(units / boxUnitCount);
 
     return {
       units,
-      boxes: Math.floor(units / boxUnitCount),
-      excessUnits: units % boxUnitCount,
+      boxes,
+      excessUnits: units - boxes * boxUnitCount,
       dozens: units * DOZEN_PER_UNIT,
       pairs: units * PAIR_PER_UNIT,
     };

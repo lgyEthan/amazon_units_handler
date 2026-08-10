@@ -536,6 +536,18 @@ button:disabled {
   background: linear-gradient(180deg, #bdf2eb, #2fa79f);
 }
 
+.unit-token.is-partial {
+  border-color: #0a7d78;
+  background:
+    linear-gradient(
+      90deg,
+      #2fa79f 0,
+      #2fa79f var(--fill-percent),
+      rgba(255, 255, 255, 0.66) var(--fill-percent),
+      rgba(255, 255, 255, 0.66) 100%
+    );
+}
+
 .mini-metrics {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

@@ -25,6 +25,7 @@ const boxRule = document.querySelector("#box-rule");
 const boxResult = document.querySelector("#box-result");
 const excessResult = document.querySelector("#excess-result");
 const excessCapacity = document.querySelector("#excess-capacity");
+const excessUnitLabel = document.querySelector("#excess-unit-label");
 const metricOneLabel = document.querySelector("#metric-one-label");
 const metricOneResult = document.querySelector("#metric-one-result");
 const metricTwoLabel = document.querySelector("#metric-two-label");
@@ -44,13 +45,23 @@ let lastSummary = "";
 let copyStatusTimer;
 
 function formatNumber(value) {
+  const absoluteValue = Math.abs(value);
+
+  if (absoluteValue > 0 && absoluteValue < 0.0001) {
+    return value
+      .toExponential(4)
+      .replace(/\.0+e/, "e")
+      .replace(/(\.\d*?[1-9])0+e/, "$1e")
+      .replace("e+", "e");
+  }
+
   return new Intl.NumberFormat("ko-KR", {
-    maximumFractionDigits: Number.isInteger(value) ? 0 : 2,
+    maximumFractionDigits: Number.isInteger(value) ? 0 : 4,
   }).format(value);
 }
 
 function formatInputValue(value) {
-  return Number.isInteger(value) ? String(value) : String(Number(value.toFixed(10)));
+  return Number.isInteger(value) ? String(value) : String(Number(value.toPrecision(12)));
 }
 
 function formatSignedNumber(value) {
@@ -85,12 +96,43 @@ function renderFullBoxes(boxes) {
 
 function renderExcessBox(excessUnits, boxUnitCount) {
   excessUnitGrid.replaceChildren();
+  const fullUnits = Math.floor(excessUnits);
+  const partialUnit = excessUnits - fullUnits;
 
   for (let index = 0; index < boxUnitCount; index += 1) {
     const unit = document.createElement("span");
-    unit.className = `unit-token${index < excessUnits ? " is-filled" : ""}`;
+
+    if (index < fullUnits) {
+      unit.className = "unit-token is-filled";
+    } else if (index === fullUnits && partialUnit > 0) {
+      unit.className = "unit-token is-partial";
+      unit.style.setProperty("--fill-percent", `${partialUnit * 100}%`);
+      unit.dataset.fillFraction = formatInputValue(partialUnit);
+    } else {
+      unit.className = "unit-token";
+    }
+
     excessUnitGrid.append(unit);
   }
+}
+
+function getActiveBoxMeasure(excessUnits = 0) {
+  const inputConfig = INPUT_TYPES[activeInputType];
+  const boxConfig = BOX_TYPES[activeBoxType];
+
+  return {
+    capacity: boxConfig.unitCount * inputConfig.inputPerUnit,
+    excess: convertUnitsToInput(excessUnits, activeInputType),
+    unitLabel: inputConfig.label.toLowerCase(),
+  };
+}
+
+function renderExcessMeasure(excessUnits) {
+  const measure = getActiveBoxMeasure(excessUnits);
+  excessResult.textContent = formatNumber(measure.excess);
+  excessCapacity.textContent = formatNumber(measure.capacity);
+  excessUnitLabel.textContent = measure.unitLabel;
+  return measure;
 }
 
 function renderResultMetrics(result) {
@@ -104,12 +146,15 @@ function renderResultMetrics(result) {
 
 function buildVisibleSummary(result) {
   const boxConfig = BOX_TYPES[activeBoxType];
-  const boxSummary = `${boxConfig.label}(${boxConfig.unitCount})`;
+  const measure = getActiveBoxMeasure(result.excessUnits);
+  const boxSummary = `${boxConfig.label}(${formatNumber(measure.capacity)} ${measure.unitLabel})`;
+  const excessSummary =
+    `Excess ${formatNumber(measure.excess)}/${formatNumber(measure.capacity)} ${measure.unitLabel}`;
 
   if (activeInputType === "pairs") {
     return (
       `Pairs ${formatNumber(result.pairs)} = Units ${formatNumber(result.units)} / ` +
-      `${boxSummary} ${formatNumber(result.boxes)} / Excess ${formatNumber(result.excessUnits)} / ` +
+      `${boxSummary} ${formatNumber(result.boxes)} / ${excessSummary} / ` +
       `Dozen ${formatNumber(result.dozens)}`
     );
   }
@@ -117,14 +162,14 @@ function buildVisibleSummary(result) {
   if (activeInputType === "dozen") {
     return (
       `Dozen ${formatNumber(result.dozens)} = Units ${formatNumber(result.units)} / ` +
-      `${boxSummary} ${formatNumber(result.boxes)} / Excess ${formatNumber(result.excessUnits)} / ` +
+      `${boxSummary} ${formatNumber(result.boxes)} / ${excessSummary} / ` +
       `Pair ${formatNumber(result.pairs)}`
     );
   }
 
   return (
     `Units ${formatNumber(result.units)} = ${boxSummary} ${formatNumber(result.boxes)} / ` +
-    `Excess ${formatNumber(result.excessUnits)} / Dozen ${formatNumber(result.dozens)} / ` +
+    `${excessSummary} / Dozen ${formatNumber(result.dozens)} / ` +
     `Pair ${formatNumber(result.pairs)}`
   );
 }
@@ -136,7 +181,7 @@ function renderResults() {
   summaryOutput.classList.remove("is-invalid");
   copyButton.disabled = false;
   boxResult.textContent = formatNumber(result.boxes);
-  excessResult.textContent = formatNumber(result.excessUnits);
+  renderExcessMeasure(result.excessUnits);
   renderResultMetrics(result);
   renderFullBoxes(result.boxes);
   renderExcessBox(result.excessUnits, boxConfig.unitCount);
@@ -155,10 +200,16 @@ function renderResults() {
 
 function renderInvalidResults(message) {
   const boxConfig = BOX_TYPES[activeBoxType];
+  const [firstMetric, secondMetric] = getResultMetrics(calculate(0), activeInputType);
 
   boxResult.textContent = "—";
   excessResult.textContent = "—";
+  const measure = getActiveBoxMeasure();
+  excessCapacity.textContent = formatNumber(measure.capacity);
+  excessUnitLabel.textContent = measure.unitLabel;
+  metricOneLabel.textContent = firstMetric.label;
   metricOneResult.textContent = "—";
+  metricTwoLabel.textContent = secondMetric.label;
   metricTwoResult.textContent = "—";
   renderFullBoxes(0);
   renderExcessBox(0, boxConfig.unitCount);
@@ -182,7 +233,7 @@ function showInputError(message) {
   quantityError.textContent = message;
 }
 
-function processQuantityInput({ normalize = false } = {}) {
+function processQuantityInput() {
   const parsed = parseInputToUnits(quantityInput.value, activeInputType);
 
   if (!parsed.isValid) {
@@ -193,14 +244,6 @@ function processQuantityInput({ normalize = false } = {}) {
 
   clearInputError();
   currentUnits = parsed.units;
-
-  if (
-    quantityInput.value !== "" &&
-    (normalize || activeInputType === "units") &&
-    formatInputValue(parsed.normalizedInput) !== quantityInput.value
-  ) {
-    quantityInput.value = formatInputValue(parsed.normalizedInput);
-  }
 
   renderResults();
   return true;
@@ -228,8 +271,10 @@ function updateBoxControls() {
 
   activeBoxTypeBadge.textContent = `${config.label} · ${config.unitCount} units`;
   boxOverview.setAttribute("aria-label", `${config.label} ${config.unitCount} units 기준 Box 요약`);
-  boxRule.textContent = `1 ${config.label} = ${config.unitCount} units`;
-  excessCapacity.textContent = formatNumber(config.unitCount);
+  boxRule.textContent =
+    `1 ${config.label} = ${config.unitCount} units = ` +
+    `${config.unitCount * INPUT_TYPES.pairs.inputPerUnit} pairs = ` +
+    `${config.unitCount * INPUT_TYPES.dozen.inputPerUnit} dozen`;
 }
 
 function copyTextWithTextArea(text) {
@@ -284,10 +329,11 @@ calculatorForm.addEventListener("submit", (event) => {
 
 quickActionButtons.forEach((button) => {
   button.addEventListener("click", () => {
-    const currentInputValue = convertUnitsToInput(currentUnits, activeInputType);
+    const rawInputValue = Number(quantityInput.value);
+    const currentInputValue = Number.isFinite(rawInputValue) ? rawInputValue : 0;
     const nextValue = Math.max(0, currentInputValue + Number(button.dataset.step));
     quantityInput.value = formatInputValue(nextValue);
-    processQuantityInput({ normalize: true });
+    processQuantityInput();
     quantityInput.focus();
   });
 });
@@ -299,10 +345,8 @@ inputTypeControls.forEach((control) => {
     }
 
     activeInputType = control.value;
-    quantityInput.value = formatInputValue(convertUnitsToInput(currentUnits, activeInputType));
-    clearInputError();
     updateInputControls();
-    renderResults();
+    processQuantityInput();
   });
 });
 
@@ -320,7 +364,7 @@ boxTypeControls.forEach((control) => {
 });
 
 quantityInput.addEventListener("input", () => processQuantityInput());
-quantityInput.addEventListener("blur", () => processQuantityInput({ normalize: true }));
+quantityInput.addEventListener("blur", () => processQuantityInput());
 
 resetButton.addEventListener("click", () => {
   currentUnits = DEFAULT_UNITS;

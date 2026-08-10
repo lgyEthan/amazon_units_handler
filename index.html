@@ -8,7 +8,7 @@
       content="아마존 재고 관리 시스템 unit, pair, dozen, Hybrid Box, 대박스 계산기"
     />
     <title>아마존 재고 관리 시스템</title>
-    <link rel="stylesheet" href="./styles.css?v=20260810-1" />
+    <link rel="stylesheet" href="./styles.css?v=20260810-2" />
   </head>
   <body>
     <main class="app-shell">
@@ -74,9 +74,9 @@
               id="quantity-input"
               name="units"
               type="number"
-              inputmode="numeric"
+              inputmode="decimal"
               min="0"
-              step="1"
+              step="any"
               value="0"
               autocomplete="off"
               aria-describedby="conversion-rule quantity-error"
@@ -94,7 +94,7 @@
           <div class="formula-band" id="conversion-rule">
             <span>1 unit = 6 pairs</span>
             <span>1 unit = 0.5 dozen</span>
-            <span id="box-rule">1 Hybrid Box = 12 units</span>
+            <span id="box-rule">1 Hybrid Box = 12 units = 72 pairs = 6 dozen</span>
           </div>
 
           <div class="form-actions">
@@ -138,7 +138,7 @@
                 <span class="box-label">Excess box</span>
                 <strong
                   ><span id="excess-result">0</span>/<span id="excess-capacity">12</span>
-                  units</strong
+                  <span id="excess-unit-label">units</span></strong
                 >
               </div>
               <div class="open-box" aria-hidden="true">
@@ -166,13 +166,13 @@
             aria-live="polite"
             aria-atomic="true"
           >
-            Units 0 = Hybrid Box(12) 0 / Excess 0 / Dozen 0 / Pair 0
+            Units 0 = Hybrid Box(12 units) 0 / Excess 0/12 units / Dozen 0 / Pair 0
           </div>
         </section>
       </section>
     </main>
 
-    <script src="./calculator.js?v=20260810-1"></script>
-    <script src="./script.js?v=20260810-1"></script>
+    <script src="./calculator.js?v=20260810-2"></script>
+    <script src="./script.js?v=20260810-2"></script>
   </body>
 </html>
