@@ -59,6 +59,8 @@
   const DEFAULT_BOX_TYPE = "hybrid";
   const DEFAULT_INPUT_TYPE = "units";
   const DEFAULT_UNITS = 0;
+  const MIN_CANONICAL_UNITS = 1e-12;
+  const MAX_CANONICAL_UNITS = Math.floor(Number.MAX_SAFE_INTEGER / PAIR_PER_UNIT);
 
   function resolveBoxType(boxType) {
     return Object.hasOwn(BOX_TYPES, boxType) ? boxType : DEFAULT_BOX_TYPE;
@@ -83,6 +85,23 @@
     return [-boxInputCount, -inputConfig.quickStep, inputConfig.quickStep, boxInputCount];
   }
 
+  function isCalculableUnits(units) {
+    if (!Number.isFinite(units) || units < 0 || units > MAX_CANONICAL_UNITS) {
+      return false;
+    }
+
+    if (units === 0) {
+      return true;
+    }
+
+    return (
+      units >= MIN_CANONICAL_UNITS &&
+      units * DOZEN_PER_UNIT > 0 &&
+      Number.isFinite(units * DOZEN_PER_UNIT) &&
+      Number.isFinite(units * PAIR_PER_UNIT)
+    );
+  }
+
   function parseInputToUnits(value, inputType) {
     const resolvedType = resolveInputType(inputType);
     const rawNumeric = Number(value);
@@ -96,15 +115,52 @@
       };
     }
 
+    const maxInputQuantity = {
+      units: MAX_CANONICAL_UNITS,
+      pairs: MAX_CANONICAL_UNITS * PAIR_PER_UNIT,
+      dozen: MAX_CANONICAL_UNITS * DOZEN_PER_UNIT,
+    }[resolvedType];
+
+    if (rawNumeric > maxInputQuantity) {
+      return {
+        isValid: false,
+        units: null,
+        normalizedInput: rawNumeric,
+        message: `${INPUT_TYPES[resolvedType].label} 수량이 계산 가능한 범위를 벗어났습니다.`,
+      };
+    }
+
+    const units = rawNumeric / INPUT_TYPES[resolvedType].inputPerUnit;
+    const roundTrippedInput = convertUnitsToInput(units, resolvedType);
+    const losesDiscreteInput =
+      Number.isInteger(rawNumeric) && roundTrippedInput !== rawNumeric;
+
+    if (
+      !isCalculableUnits(units) ||
+      (rawNumeric > 0 && units === 0) ||
+      losesDiscreteInput
+    ) {
+      return {
+        isValid: false,
+        units: null,
+        normalizedInput: rawNumeric,
+        message: `${INPUT_TYPES[resolvedType].label} 수량이 계산 가능한 범위를 벗어났습니다.`,
+      };
+    }
+
     return {
       isValid: true,
-      units: rawNumeric / INPUT_TYPES[resolvedType].inputPerUnit,
+      units,
       normalizedInput: rawNumeric,
       message: "",
     };
   }
 
   function calculate(units, boxType = DEFAULT_BOX_TYPE) {
+    if (!isCalculableUnits(units)) {
+      throw new RangeError("Units quantity is outside the calculable range.");
+    }
+
     const resolvedBoxType = resolveBoxType(boxType);
     const boxUnitCount = BOX_TYPES[resolvedBoxType].unitCount;
     const boxes = Math.floor(units / boxUnitCount);
@@ -137,6 +193,8 @@
     DOZEN_PER_UNIT,
     INPUT_TYPES,
     LARGE_BOX_UNIT_COUNT,
+    MAX_CANONICAL_UNITS,
+    MIN_CANONICAL_UNITS,
     PAIR_PER_UNIT,
     RESULT_METRICS,
     calculate,

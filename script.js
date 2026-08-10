@@ -55,9 +55,26 @@ function formatNumber(value) {
       .replace("e+", "e");
   }
 
+  let maximumFractionDigits = Number.isInteger(value) ? 0 : 4;
+
+  if (maximumFractionDigits > 0 && Number.isInteger(Number(value.toFixed(4)))) {
+    const distanceToInteger = Math.abs(value - Math.round(value));
+
+    if (distanceToInteger > 0) {
+      maximumFractionDigits = Math.min(
+        16,
+        Math.max(4, Math.ceil(-Math.log10(distanceToInteger)) + 1),
+      );
+    }
+  }
+
   return new Intl.NumberFormat("ko-KR", {
-    maximumFractionDigits: Number.isInteger(value) ? 0 : 4,
+    maximumFractionDigits,
   }).format(value);
+}
+
+function serializeNumber(value) {
+  return Object.is(value, -0) ? "0" : String(value);
 }
 
 function formatInputValue(value) {
@@ -116,19 +133,21 @@ function renderExcessBox(excessUnits, boxUnitCount) {
   }
 }
 
-function getActiveBoxMeasure(excessUnits = 0) {
+function getActiveBoxMeasure(result = null) {
   const inputConfig = INPUT_TYPES[activeInputType];
   const boxConfig = BOX_TYPES[activeBoxType];
+  const capacity = boxConfig.unitCount * inputConfig.inputPerUnit;
+  const activeTotal = result ? Number(quantityInput.value) : 0;
 
   return {
-    capacity: boxConfig.unitCount * inputConfig.inputPerUnit,
-    excess: convertUnitsToInput(excessUnits, activeInputType),
+    capacity,
+    excess: activeTotal - (result?.boxes || 0) * capacity,
     unitLabel: inputConfig.label.toLowerCase(),
   };
 }
 
-function renderExcessMeasure(excessUnits) {
-  const measure = getActiveBoxMeasure(excessUnits);
+function renderExcessMeasure(result) {
+  const measure = getActiveBoxMeasure(result);
   excessResult.textContent = formatNumber(measure.excess);
   excessCapacity.textContent = formatNumber(measure.capacity);
   excessUnitLabel.textContent = measure.unitLabel;
@@ -146,14 +165,15 @@ function renderResultMetrics(result) {
 
 function buildVisibleSummary(result) {
   const boxConfig = BOX_TYPES[activeBoxType];
-  const measure = getActiveBoxMeasure(result.excessUnits);
+  const measure = getActiveBoxMeasure(result);
+  const activeInputValue = Number(quantityInput.value);
   const boxSummary = `${boxConfig.label}(${formatNumber(measure.capacity)} ${measure.unitLabel})`;
   const excessSummary =
     `Excess ${formatNumber(measure.excess)}/${formatNumber(measure.capacity)} ${measure.unitLabel}`;
 
   if (activeInputType === "pairs") {
     return (
-      `Pairs ${formatNumber(result.pairs)} = Units ${formatNumber(result.units)} / ` +
+      `Pairs ${formatNumber(activeInputValue)} = Units ${formatNumber(result.units)} / ` +
       `${boxSummary} ${formatNumber(result.boxes)} / ${excessSummary} / ` +
       `Dozen ${formatNumber(result.dozens)}`
     );
@@ -161,14 +181,14 @@ function buildVisibleSummary(result) {
 
   if (activeInputType === "dozen") {
     return (
-      `Dozen ${formatNumber(result.dozens)} = Units ${formatNumber(result.units)} / ` +
+      `Dozen ${formatNumber(activeInputValue)} = Units ${formatNumber(result.units)} / ` +
       `${boxSummary} ${formatNumber(result.boxes)} / ${excessSummary} / ` +
       `Pair ${formatNumber(result.pairs)}`
     );
   }
 
   return (
-    `Units ${formatNumber(result.units)} = ${boxSummary} ${formatNumber(result.boxes)} / ` +
+    `Units ${formatNumber(activeInputValue)} = ${boxSummary} ${formatNumber(result.boxes)} / ` +
     `${excessSummary} / Dozen ${formatNumber(result.dozens)} / ` +
     `Pair ${formatNumber(result.pairs)}`
   );
@@ -177,21 +197,31 @@ function buildVisibleSummary(result) {
 function renderResults() {
   const boxConfig = BOX_TYPES[activeBoxType];
   const result = calculate(currentUnits, activeBoxType);
+  const activeInputValue = Number(quantityInput.value);
+  const activeResultKey = {
+    units: "units",
+    pairs: "pairs",
+    dozen: "dozens",
+  }[activeInputType];
+  const copyResult = {
+    ...result,
+    [activeResultKey]: activeInputValue,
+  };
 
   summaryOutput.classList.remove("is-invalid");
   copyButton.disabled = false;
   boxResult.textContent = formatNumber(result.boxes);
-  renderExcessMeasure(result.excessUnits);
+  renderExcessMeasure(result);
   renderResultMetrics(result);
   renderFullBoxes(result.boxes);
   renderExcessBox(result.excessUnits, boxConfig.unitCount);
 
   lastSummary = [
-    `Units\t${formatNumber(result.units)}`,
-    `Box\t${formatNumber(result.boxes)}`,
-    `Excess units\t${formatNumber(result.excessUnits)}`,
-    `Dozen\t${formatNumber(result.dozens)}`,
-    `Pair\t${formatNumber(result.pairs)}`,
+    `Units\t${serializeNumber(copyResult.units)}`,
+    `Box\t${serializeNumber(copyResult.boxes)}`,
+    `Excess units\t${serializeNumber(copyResult.excessUnits)}`,
+    `Dozen\t${serializeNumber(copyResult.dozens)}`,
+    `Pair\t${serializeNumber(copyResult.pairs)}`,
   ].join("\n");
 
   summaryOutput.textContent = buildVisibleSummary(result);
