@@ -370,6 +370,7 @@ test("unknown modes safely retain the documented defaults", () => {
   assert.deepEqual(getQuickSteps("pairs", "unknown"), getQuickSteps("pairs", "hybrid"));
   assert.equal(BOX_TYPES.hybrid.unitCount, 12);
   assert.equal(BOX_TYPES.large.unitCount, 18);
+  assert.equal(BOX_TYPES.large.label, "Large box");
 });
 
 test("result metric API keeps canonical values while presentation handles Pair remainders", () => {

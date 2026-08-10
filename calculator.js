@@ -12,7 +12,7 @@
       unitCount: BOX_UNIT_COUNT,
     }),
     large: Object.freeze({
-      label: "대박스",
+      label: "Large box",
       unitCount: LARGE_BOX_UNIT_COUNT,
     }),
   });
