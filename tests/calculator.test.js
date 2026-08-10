@@ -6,7 +6,9 @@ const {
   INPUT_TYPES,
   MAX_CANONICAL_UNITS,
   calculate,
+  calculatePairInput,
   convertUnitsToInput,
+  getPairBreakdown,
   getQuickSteps,
   getResultMetrics,
   parseInputToUnits,
@@ -78,7 +80,7 @@ test("literal 12 produces six distinct, hand-authored input and box results", ()
   }
 });
 
-test("Pair quantities no longer need to be multiples of six", () => {
+test("integer Pair quantities preserve remainders instead of requiring multiples of six", () => {
   const onePair = parseInputToUnits("1", "pairs");
   const seventyThreePairs = parseInputToUnits("73", "pairs");
 
@@ -110,6 +112,47 @@ test("Pair quantities no longer need to be multiples of six", () => {
   );
 });
 
+test("Pair quotient and remainder use hand-authored six-Pair bundles", () => {
+  const cases = [
+    [0, 0, 0, 0],
+    [1, 0, 0, 1],
+    [5, 0, 0, 5],
+    [6, 1, 0.5, 0],
+    [7, 1, 0.5, 1],
+    [11, 1, 0.5, 5],
+    [12, 2, 1, 0],
+    [13, 2, 1, 1],
+    [71, 11, 5.5, 5],
+    [72, 12, 6, 0],
+    [73, 12, 6, 1],
+    [107, 17, 8.5, 5],
+    [108, 18, 9, 0],
+    [109, 18, 9, 1],
+  ];
+
+  for (const [pairs, units, dozens, remainderPairs] of cases) {
+    assert.deepEqual(getPairBreakdown(pairs), { units, dozens, remainderPairs });
+  }
+
+  for (const invalid of [-1, 0.1, 1.5, Number.MAX_SAFE_INTEGER + 1]) {
+    assert.throws(() => getPairBreakdown(invalid), /safe integer/);
+  }
+});
+
+test("Pair-mode box arithmetic keeps integer remainders at large supported values", () => {
+  const cases = [
+    ["hybrid", 125_099_989_648_902, 46],
+    ["large", 83_399_993_099_268, 46],
+  ];
+
+  for (const [boxType, boxes, remainderPairs] of cases) {
+    const result = calculatePairInput(9_007_199_254_720_990, boxType);
+    assert.equal(result.boxes, boxes);
+    assertClose(result.excessUnits, remainderPairs / 6, `${boxType} exact Pair remainder`);
+    assert.equal(result.pairs, 9_007_199_254_720_990);
+  }
+});
+
 test("box thresholds are correct in each independently entered unit type", () => {
   const cases = [
     ["12", "units", "hybrid", 1, 0],
@@ -132,9 +175,10 @@ test("box thresholds are correct in each independently entered unit type", () =>
   }
 });
 
-test("supported nonnegative decimal literals remain unchanged and valid", () => {
+test("supported Unit and Dozen decimals remain unchanged and valid", () => {
   for (const literal of ["0", "0.0000000001", "0.1", "1.25", "13.9"]) {
-    for (const [inputType, config] of Object.entries(INPUT_TYPES)) {
+    for (const inputType of ["units", "dozen"]) {
+      const config = INPUT_TYPES[inputType];
       const parsed = parseInputToUnits(literal, inputType);
       assert.equal(parsed.isValid, true, `${literal} ${inputType}`);
       assert.equal(parsed.normalizedInput, Number(literal));
@@ -143,12 +187,28 @@ test("supported nonnegative decimal literals remain unchanged and valid", () => 
   }
 });
 
+test("Pair input accepts whole counts and rejects fractional counts", () => {
+  for (const literal of ["0", "1", "7", "72", "109", "1.0", "1e2"]) {
+    const parsed = parseInputToUnits(literal, "pairs");
+    assert.equal(parsed.isValid, true, `${literal} Pairs should be valid`);
+    assert.equal(parsed.normalizedInput, Number(literal));
+    assertClose(parsed.units, Number(literal) / 6, `${literal} Pair units`);
+  }
+
+  for (const literal of ["0.1", "1.5", "5.99999", "71.99999", "72.00001", "107.99999", "108.00001", "13.9"]) {
+    const parsed = parseInputToUnits(literal, "pairs");
+    assert.equal(parsed.isValid, false, `${literal} Pairs should be invalid`);
+    assert.equal(parsed.units, null);
+    assert.match(parsed.message, /정수/);
+  }
+});
+
 test("values just below each box threshold never become a full box", () => {
   const cases = [
     ["11.99999", "units", "hybrid", 11.99999],
     ["17.99999", "units", "large", 17.99999],
-    ["71.99999", "pairs", "hybrid", 71.99999 / 6],
-    ["107.99999", "pairs", "large", 107.99999 / 6],
+    ["71", "pairs", "hybrid", 71 / 6],
+    ["107", "pairs", "large", 107 / 6],
     ["5.99999", "dozen", "hybrid", 11.99998],
     ["8.99999", "dozen", "large", 17.99998],
   ];
@@ -170,8 +230,8 @@ test("values just above each box threshold retain a nonzero excess", () => {
   const cases = [
     ["12.00001", "units", "hybrid", 0.00001],
     ["18.00001", "units", "large", 0.00001],
-    ["72.00001", "pairs", "hybrid", 0.00001 / 6],
-    ["108.00001", "pairs", "large", 0.00001 / 6],
+    ["73", "pairs", "hybrid", 1 / 6],
+    ["109", "pairs", "large", 1 / 6],
     ["6.00001", "dozen", "hybrid", 0.00002],
     ["9.00001", "dozen", "large", 0.00002],
   ];
@@ -190,24 +250,24 @@ test("values just above each box threshold retain a nonzero excess", () => {
   }
 });
 
-test("very small positive quantities are never rounded down to zero", () => {
+test("very small supported Unit and Dozen quantities are never rounded down to zero", () => {
   const tinyUnits = parseInputToUnits("0.0000000001", "units");
-  const tinyPairs = parseInputToUnits("0.0000000001", "pairs");
+  const tinyDozen = parseInputToUnits("0.0000000001", "dozen");
   const unitsResult = calculate(tinyUnits.units, "hybrid");
-  const pairsResult = calculate(tinyPairs.units, "large");
+  const dozenResult = calculate(tinyDozen.units, "large");
 
   assert.ok(unitsResult.excessUnits > 0);
   assert.ok(unitsResult.dozens > 0);
   assert.ok(unitsResult.pairs > 0);
-  assert.ok(pairsResult.excessUnits > 0);
-  assert.ok(pairsResult.dozens > 0);
-  assert.ok(pairsResult.pairs > 0);
+  assert.ok(dozenResult.excessUnits > 0);
+  assert.ok(dozenResult.dozens > 0);
+  assert.ok(dozenResult.pairs > 0);
   assertClose(unitsResult.excessUnits, 1e-10, "tiny Unit excess");
   assertClose(unitsResult.dozens, 5e-11, "tiny Unit dozen");
   assertClose(unitsResult.pairs, 6e-10, "tiny Unit pairs");
-  assertClose(pairsResult.excessUnits, 1e-10 / 6, "tiny Pair excess Units");
-  assertClose(pairsResult.dozens, 1e-10 / 12, "tiny Pair dozen");
-  assertClose(pairsResult.pairs, 1e-10, "tiny Pair total");
+  assertClose(dozenResult.excessUnits, 2e-10, "tiny Dozen excess Units");
+  assertClose(dozenResult.dozens, 1e-10, "tiny Dozen total");
+  assertClose(dozenResult.pairs, 1.2e-9, "tiny Dozen pairs");
 });
 
 test("negative and nonnumeric input is invalid in every input type", () => {
@@ -312,7 +372,7 @@ test("unknown modes safely retain the documented defaults", () => {
   assert.equal(BOX_TYPES.large.unitCount, 18);
 });
 
-test("result cards omit only the selected input type, including fractional Pair results", () => {
+test("result metric API keeps canonical values while presentation handles Pair remainders", () => {
   const result = calculate(1 / 6);
 
   const pairMetrics = getResultMetrics(result, "pairs");

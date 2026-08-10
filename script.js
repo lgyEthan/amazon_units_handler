@@ -5,7 +5,9 @@ const {
   DEFAULT_UNITS,
   INPUT_TYPES,
   calculate,
+  calculatePairInput,
   convertUnitsToInput,
+  getPairBreakdown,
   getQuickSteps,
   getResultMetrics,
   parseInputToUnits,
@@ -86,6 +88,15 @@ function formatSignedNumber(value) {
   return `${value > 0 ? "+" : "-"}${formatted}`;
 }
 
+function formatPairQuotient(value, remainderPairs) {
+  if (remainderPairs === 0) {
+    return formatNumber(value);
+  }
+
+  const remainderLabel = remainderPairs === 1 ? "Pair" : "Pairs";
+  return `${formatNumber(value)} + ${formatNumber(remainderPairs)} ${remainderLabel}`;
+}
+
 function renderFullBoxes(boxes) {
   fullBoxRow.replaceChildren();
 
@@ -158,8 +169,27 @@ function renderResultMetrics(result) {
   const [firstMetric, secondMetric] = getResultMetrics(result, activeInputType);
 
   metricOneLabel.textContent = firstMetric.label;
-  metricOneResult.textContent = formatNumber(firstMetric.value);
   metricTwoLabel.textContent = secondMetric.label;
+
+  if (activeInputType === "pairs") {
+    const pairBreakdown = getPairBreakdown(Number(quantityInput.value));
+    const hasRemainder = pairBreakdown.remainderPairs > 0;
+    metricOneResult.classList.toggle("has-pair-remainder", hasRemainder);
+    metricTwoResult.classList.toggle("has-pair-remainder", hasRemainder);
+    metricOneResult.textContent = formatPairQuotient(
+      pairBreakdown.units,
+      pairBreakdown.remainderPairs,
+    );
+    metricTwoResult.textContent = formatPairQuotient(
+      pairBreakdown.dozens,
+      pairBreakdown.remainderPairs,
+    );
+    return;
+  }
+
+  metricOneResult.classList.remove("has-pair-remainder");
+  metricTwoResult.classList.remove("has-pair-remainder");
+  metricOneResult.textContent = formatNumber(firstMetric.value);
   metricTwoResult.textContent = formatNumber(secondMetric.value);
 }
 
@@ -172,10 +202,20 @@ function buildVisibleSummary(result) {
     `Excess ${formatNumber(measure.excess)}/${formatNumber(measure.capacity)} ${measure.unitLabel}`;
 
   if (activeInputType === "pairs") {
+    const pairBreakdown = getPairBreakdown(activeInputValue);
+    const unitsSummary = formatPairQuotient(
+      pairBreakdown.units,
+      pairBreakdown.remainderPairs,
+    );
+    const dozenSummary = formatPairQuotient(
+      pairBreakdown.dozens,
+      pairBreakdown.remainderPairs,
+    );
+
     return (
-      `Pairs ${formatNumber(activeInputValue)} = Units ${formatNumber(result.units)} / ` +
+      `Pairs ${formatNumber(activeInputValue)} = Units ${unitsSummary} / ` +
       `${boxSummary} ${formatNumber(result.boxes)} / ${excessSummary} / ` +
-      `Dozen ${formatNumber(result.dozens)}`
+      `Dozen ${dozenSummary}`
     );
   }
 
@@ -196,8 +236,11 @@ function buildVisibleSummary(result) {
 
 function renderResults() {
   const boxConfig = BOX_TYPES[activeBoxType];
-  const result = calculate(currentUnits, activeBoxType);
   const activeInputValue = Number(quantityInput.value);
+  const result =
+    activeInputType === "pairs"
+      ? calculatePairInput(activeInputValue, activeBoxType)
+      : calculate(currentUnits, activeBoxType);
   const activeResultKey = {
     units: "units",
     pairs: "pairs",
@@ -238,8 +281,10 @@ function renderInvalidResults(message) {
   excessCapacity.textContent = formatNumber(measure.capacity);
   excessUnitLabel.textContent = measure.unitLabel;
   metricOneLabel.textContent = firstMetric.label;
+  metricOneResult.classList.remove("has-pair-remainder");
   metricOneResult.textContent = "—";
   metricTwoLabel.textContent = secondMetric.label;
+  metricTwoResult.classList.remove("has-pair-remainder");
   metricTwoResult.textContent = "—";
   renderFullBoxes(0);
   renderExcessBox(0, boxConfig.unitCount);

@@ -564,11 +564,18 @@ button:disabled {
 }
 
 .mini-metrics dd {
+  min-width: 0;
   margin: 7px 0 0;
   color: var(--ink);
   font-size: 1.55rem;
   font-weight: 900;
   line-height: 1;
+  overflow-wrap: anywhere;
+}
+
+.mini-metrics dd.has-pair-remainder {
+  font-size: 1.25rem;
+  line-height: 1.2;
 }
 
 .summary-output {

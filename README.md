@@ -17,6 +17,8 @@ Units, Pairs, Dozen 중 원하는 입력 단위와 Hybrid Box 또는 대박스 �
 
 입력 단위를 바꿔도 입력창의 숫자는 바뀌지 않습니다. 예를 들어 `1 Units`에서 `Pairs`를 선택하면 입력값은 `1`로 유지되고, 결과는 `1 Pair` 기준으로 다시 계산됩니다.
 
+Pairs는 0 이상의 정수로 입력합니다. Pairs 모드의 Units와 Dozen 결과는 소수 대신 `몫 + 남는 Pairs`로 표시되며, Dozen 몫은 0.5 단위까지만 표시됩니다. 예: `7 Pairs = 1 Unit + 1 Pair = 0.5 Dozen + 1 Pair`.
+
 ## 계산 기준
 
 - Hybrid Box: 12 units = 72 pairs = 6 dozen = 1 box

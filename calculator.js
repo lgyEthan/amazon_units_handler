@@ -28,9 +28,9 @@
     pairs: Object.freeze({
       label: "Pairs",
       inputPerUnit: PAIR_PER_UNIT,
-      step: "any",
+      step: 1,
       quickStep: 1,
-      inputMode: "decimal",
+      inputMode: "numeric",
     }),
     dozen: Object.freeze({
       label: "Dozen",
@@ -85,6 +85,20 @@
     return [-boxInputCount, -inputConfig.quickStep, inputConfig.quickStep, boxInputCount];
   }
 
+  function getPairBreakdown(pairs) {
+    if (!Number.isSafeInteger(pairs) || pairs < 0) {
+      throw new RangeError("Pairs quantity must be a nonnegative safe integer.");
+    }
+
+    const units = Math.floor(pairs / PAIR_PER_UNIT);
+
+    return {
+      units,
+      dozens: units * DOZEN_PER_UNIT,
+      remainderPairs: pairs % PAIR_PER_UNIT,
+    };
+  }
+
   function isCalculableUnits(units) {
     if (!Number.isFinite(units) || units < 0 || units > MAX_CANONICAL_UNITS) {
       return false;
@@ -112,6 +126,15 @@
         units: null,
         normalizedInput: 0,
         message: `${INPUT_TYPES[resolvedType].label}는 0 이상의 수량을 입력해 주세요.`,
+      };
+    }
+
+    if (resolvedType === "pairs" && !Number.isInteger(rawNumeric)) {
+      return {
+        isValid: false,
+        units: null,
+        normalizedInput: rawNumeric,
+        message: "Pairs는 0 이상의 정수로 입력해 주세요.",
       };
     }
 
@@ -174,6 +197,28 @@
     };
   }
 
+  function calculatePairInput(pairs, boxType = DEFAULT_BOX_TYPE) {
+    const parsed = parseInputToUnits(pairs, "pairs");
+
+    if (!parsed.isValid) {
+      throw new RangeError("Pairs quantity is outside the calculable range.");
+    }
+
+    const numericPairs = parsed.normalizedInput;
+    const resolvedBoxType = resolveBoxType(boxType);
+    const boxPairCount = BOX_TYPES[resolvedBoxType].unitCount * PAIR_PER_UNIT;
+    const boxes = Math.floor(numericPairs / boxPairCount);
+    const excessPairs = numericPairs - boxes * boxPairCount;
+
+    return {
+      units: numericPairs / PAIR_PER_UNIT,
+      boxes,
+      excessUnits: excessPairs / PAIR_PER_UNIT,
+      dozens: numericPairs / (PAIR_PER_UNIT / DOZEN_PER_UNIT),
+      pairs: numericPairs,
+    };
+  }
+
   function getResultMetrics(result, inputType) {
     const resolvedType = resolveInputType(inputType);
 
@@ -198,8 +243,10 @@
     PAIR_PER_UNIT,
     RESULT_METRICS,
     calculate,
+    calculatePairInput,
     convertUnitsToInput,
     getQuickSteps,
+    getPairBreakdown,
     getResultMetrics,
     parseInputToUnits,
     resolveBoxType,
